@@ -62,12 +62,12 @@ export function OverviewPage() {
           title="Net Liquidity Change"
           value={
             latestMetrics.netLiquidity
-              ? `${Number(latestMetrics.netLiquidity.net_weth).toFixed(4)} WETH / ${Number(latestMetrics.netLiquidity.net_usdc).toFixed(2)} USDC`
+              ? `${Number(latestMetrics.netLiquidity.net_usd) >= 0 ? "+" : "-"}$${Math.abs(Number(latestMetrics.netLiquidity.net_usd)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : null
           }
           subtitle={
             latestMetrics.netLiquidity
-              ? `${latestMetrics.netLiquidity.mint_count} mints, ${latestMetrics.netLiquidity.burn_count} burns on ${latestMetrics.netLiquidity.day}`
+              ? `${Number(latestMetrics.netLiquidity.net_weth).toFixed(4)} WETH · ${Number(latestMetrics.netLiquidity.net_usdc).toFixed(2)} USDC · ${latestMetrics.netLiquidity.mint_count} mints, ${latestMetrics.netLiquidity.burn_count} burns`
               : undefined
           }
           accent="emerald"
@@ -107,18 +107,18 @@ export function OverviewPage() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Net Liquidity Change (WETH)" description="WETH added vs removed by LPs per day">
+        <ChartCard title="Net Liquidity Change (USD)" description="USD-equivalent net LP capital flow per day (WETH priced from pool swaps)">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={liquidity}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
               <XAxis dataKey="day" tick={chartAxisTick} />
-              <YAxis tick={chartAxisTick} />
+              <YAxis tick={chartAxisTick} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip
                 contentStyle={chartTooltipStyle}
                 labelStyle={chartTooltipLabelStyle}
+                formatter={(value) => [`$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, undefined]}
               />
-              <Bar dataKey="weth_added" fill={chartTheme.accentGreen} fillOpacity={chartTheme.barOpacity} name="WETH Added" />
-              <Bar dataKey="weth_removed" fill={chartTheme.accentRed} fillOpacity={chartTheme.barOpacity} name="WETH Removed" />
+              <Bar dataKey="net_usd" name="Net USD" fill={chartTheme.accentGreen} fillOpacity={chartTheme.barOpacity} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

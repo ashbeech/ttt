@@ -30,32 +30,36 @@ daily_fee_estimate = SUM(ABS(amount0) / 10^18 * 0.0005) GROUP BY day
 
 ---
 
-## 2. Net liquidity change
+## 2. Net liquidity change (USD-equivalent)
 
-**What it measures:** The net token amounts added vs removed by liquidity providers each day, denominated in actual tokens (WETH and USDC) from the `amount0` and `amount1` fields of Mint and Burn events.
+**What it measures:** The USD-equivalent net capital flow from liquidity providers each day — a single number that tells you whether more capital entered or left the pool.
 
 **Formula:**
 
 ```
-net_weth = SUM(Mint.amount0 / 10^18) - SUM(Burn.amount0 / 10^18) GROUP BY day
-net_usdc = SUM(Mint.amount1 / 10^6) - SUM(Burn.amount1 / 10^6) GROUP BY day
+weth_price_usdc = SUM(|swap.amount1| / 10^6) / SUM(|swap.amount0| / 10^18) per day
+net_weth        = SUM(Mint.amount0 / 10^18) - SUM(Burn.amount0 / 10^18) per day
+net_usdc        = SUM(Mint.amount1 / 10^6)  - SUM(Burn.amount1 / 10^6)  per day
+net_usd         = net_usdc + (net_weth × weth_price_usdc)
 ```
 
-The output includes `weth_added`, `weth_removed`, `net_weth`, `usdc_added`, `usdc_removed`, `net_usdc`, `mint_count`, and `burn_count` for each day.
+The output includes `weth_added`, `weth_removed`, `net_weth`, `usdc_added`, `usdc_removed`, `net_usdc`, `weth_price_usdc`, `net_usd`, `mint_count`, and `burn_count` for each day.
 
-**Source events:** Mint, Burn
+**Source events:** Swap (for price derivation), Mint, Burn
 
-**Source files:** `data/intermediate/mints.parquet`, `data/intermediate/burns.parquet`
+**Source files:** `data/intermediate/swaps.parquet`, `data/intermediate/mints.parquet`, `data/intermediate/burns.parquet`
 
-**How it works:** For each day, sum the `amount0` (WETH) and `amount1` (USDC) fields from Mint events and Burn events separately, converting from raw units to token units using the appropriate decimals. Subtract removed from added to get the net change per token. Days with only mints or only burns are handled with a FULL OUTER JOIN and COALESCE.
+**How it works:** First, derive the WETH price in USDC terms from the pool's own swap data. This is a volume-weighted average: total USDC volume divided by total WETH volume across all swaps that day. Then compute net WETH and net USDC from Mint/Burn events. Finally, convert net WETH to USDC at the derived price and add to net USDC for a single USD figure.
+
+**Design decision:** The initial implementation showed raw liquidity units (an opaque internal Uniswap number), which was meaningless to a user. The second iteration showed separate WETH and USDC amounts, but displaying two unrelated token deltas side by side is clunky UX. The current approach converts everything to a single dollar figure — immediately interpretable. The WETH price is derived from the pool itself rather than an external oracle, keeping the system self-contained and auditable.
 
 **Caveats:**
 
-- Uses actual token amounts (`amount0`/`amount1`) rather than the abstract `amount` (liquidity units) field. This gives a meaningful, human-readable metric.
-- The amounts are token-denominated, not USD. You'd need an oracle/price feed to convert to a common denomination.
+- The WETH price is a daily volume-weighted average from the pool's own swaps. It's not a point-in-time price at the moment of each Mint/Burn. In production, you'd use TWAP data from an oracle (e.g. Uniswap V3's `observe()`) or a Chainlink price feed mapped to transaction timestamps.
+- USDC is treated as $1. In practice, USDC can trade slightly off-peg.
 - A single large LP can dominate the numbers. There's no per-wallet breakdown at this level (see Top Wallets for that).
 
-**Why it's useful:** Net liquidity trends in real tokens show whether LPs are committing or withdrawing capital in concrete terms. Seeing "-3.67 WETH / +6,981 USDC" is immediately meaningful. Sustained negative flows signal LP withdrawal, which affects pool depth and trading quality.
+**Why it's useful:** A single dollar figure is the most intuitive way to understand liquidity flows. Seeing "-$301.55" instantly communicates direction and magnitude without mental token-price conversions. The breakdown into WETH/USDC components is preserved in the underlying data and visible in the Metrics detail view for anyone who wants it.
 
 ---
 
