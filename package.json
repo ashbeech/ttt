@@ -16,6 +16,7 @@
     "generate-seed": "bun run scripts/generate-seed.ts",
     "dev": "bun run dev:api & bun run dev:web",
     "dev:api": "bun run --watch apps/api/src/server.ts",
+    "dev:mcp": "bun run apps/mcp/src/server.ts",
     "dev:web": "cd apps/web && bun run dev",
     "test": "bun test"
   },
