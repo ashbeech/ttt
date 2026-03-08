@@ -1,0 +1,10 @@
+{
+  "name": "@mini-terminal/metrics",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/build-metrics.ts",
+  "dependencies": {
+    "@mini-terminal/shared": "workspace:*",
+    "@duckdb/node-api": "1.4.4-r.3"
+  }
+}

@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+
+# Logs
+logs
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Data — keep seed, ignore live-fetched data
+data/raw/*.json
+data/intermediate/*.parquet
+data/processed/*.parquet
+data/processed/pipeline-manifest.json
+!data/seed/
+
+# Bun
+bun.lock

@@ -1,0 +1,10 @@
+{
+  "name": "@mini-terminal/ingestion",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/fetch-pool-events.ts",
+  "dependencies": {
+    "@mini-terminal/shared": "workspace:*",
+    "viem": "^2.28.0"
+  }
+}

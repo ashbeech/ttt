@@ -1,0 +1,27 @@
+{
+  "name": "mini-terminal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "pipeline": "bun run scripts/run-pipeline.ts",
+    "pipeline:fetch": "bun run packages/ingestion/src/fetch-pool-events.ts",
+    "pipeline:decode": "bun run packages/decoding/src/decode-events.ts",
+    "pipeline:metrics": "bun run packages/metrics/src/build-metrics.ts",
+    "pipeline:seed": "bun run scripts/seed-from-live.ts",
+    "generate-seed": "bun run scripts/generate-seed.ts",
+    "dev": "bun run dev:api & bun run dev:web",
+    "dev:api": "bun run --watch apps/api/src/server.ts",
+    "dev:web": "cd apps/web && bun run dev",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.4.4-r.3",
+    "@mini-terminal/shared": "workspace:*",
+    "viem": "^2.47.0"
+  }
+}

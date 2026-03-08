@@ -1,0 +1,11 @@
+{
+  "name": "@mini-terminal/decoding",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/decode-events.ts",
+  "dependencies": {
+    "@mini-terminal/shared": "workspace:*",
+    "@duckdb/node-api": "1.4.4-r.3",
+    "viem": "^2.28.0"
+  }
+}
