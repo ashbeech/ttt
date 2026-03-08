@@ -32,10 +32,10 @@ const SECTIONS: MetricSection[] = [
   },
   {
     key: "liquidity",
-    title: "Net Liquidity Change",
+    title: "Net Liquidity Change (USD)",
     description:
-      "Token amounts added minus removed each day by liquidity providers (Mint and Burn events). Shown in WETH and USDC.",
-    formula: "net_weth = SUM(mint.amount0 / 10^18) - SUM(burn.amount0 / 10^18), net_usdc = SUM(mint.amount1 / 10^6) - SUM(burn.amount1 / 10^6)",
+      "USD-equivalent net capital flow from LPs. WETH price is derived from the pool's own swap data (volume-weighted average), then net WETH is converted and added to net USDC for a single figure.",
+    formula: "net_usd = net_usdc + (net_weth × weth_price_usdc), where weth_price_usdc = SUM(|amount1|/10^6) / SUM(|amount0|/10^18) from swaps",
   },
   {
     key: "wallets",
@@ -98,10 +98,9 @@ export function MetricsPage() {
       <BarChart data={data as Record<string, unknown>[]}>
         <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
         <XAxis dataKey="day" tick={chartAxisTick} />
-        <YAxis tick={chartAxisTick} />
-        <Tooltip contentStyle={chartTooltipStyle} />
-        <Bar dataKey="weth_added" fill={chartTheme.accentGreen} fillOpacity={chartTheme.barOpacity} name="WETH Added" />
-        <Bar dataKey="weth_removed" fill={chartTheme.accentRed} fillOpacity={chartTheme.barOpacity} name="WETH Removed" />
+        <YAxis tick={chartAxisTick} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
+        <Tooltip contentStyle={chartTooltipStyle} formatter={(value: number) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, undefined]} />
+        <Bar dataKey="net_usd" fill={chartTheme.accentGreen} fillOpacity={chartTheme.barOpacity} name="Net USD" />
       </BarChart>
     ),
     wallets: (data) => (

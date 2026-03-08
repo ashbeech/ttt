@@ -14,7 +14,7 @@ export async function getOverview() {
     pipelineSource: string | null;
     latestMetrics: {
       feeEstimate: { day: string; fee_estimate: number; swap_count: number } | null;
-      netLiquidity: { day: string; net_weth: number; net_usdc: number; weth_added: number; weth_removed: number; usdc_added: number; usdc_removed: number; mint_count: number; burn_count: number } | null;
+      netLiquidity: { day: string; net_weth: number; net_usdc: number; weth_price_usdc: number; net_usd: number; weth_added: number; weth_removed: number; usdc_added: number; usdc_removed: number; mint_count: number; burn_count: number } | null;
       activeWallets: { day: string; active_total: number; active_swappers: number; active_liquidity_providers: number; active_both: number } | null;
     };
     dataFreshness: { manifestExists: boolean; rowCounts: { swaps: number; mints: number; burns: number } | null };
@@ -36,7 +36,7 @@ export async function getLiquidity(from?: string, to?: string) {
   if (from) params.set("from", from);
   if (to) params.set("to", to);
   const qs = params.toString();
-  return fetchJson<Array<{ day: string; weth_added: number; weth_removed: number; net_weth: number; usdc_added: number; usdc_removed: number; net_usdc: number; mint_count: number; burn_count: number }>>(
+  return fetchJson<Array<{ day: string; weth_added: number; weth_removed: number; net_weth: number; usdc_added: number; usdc_removed: number; net_usdc: number; weth_price_usdc: number; net_usd: number; mint_count: number; burn_count: number }>>(
     `/metrics/liquidity${qs ? `?${qs}` : ""}`
   );
 }

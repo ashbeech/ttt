@@ -36,12 +36,23 @@ async function main() {
     ) TO '${resolve(outDir, "daily_fee_estimate.parquet")}' (FORMAT PARQUET)
   `);
 
-  // ── Daily net liquidity (token-denominated) ────────────────────────
+  // ── Daily net liquidity (USD-equivalent) ───────────────────────────
+  // Derive WETH price from the pool's own swap data, then convert
+  // everything to a single USDC-denominated figure.
   const token1Decimals = config.poolMeta.token1.decimals;
   console.log("Building daily_net_liquidity...");
   await conn.run(`
     COPY (
-      WITH mints AS (
+      WITH swap_price AS (
+        SELECT
+          day,
+          SUM(ABS(CAST(amount1 AS DOUBLE)) / POW(10, ${token1Decimals}))
+            / NULLIF(SUM(ABS(CAST(amount0 AS DOUBLE)) / POW(10, ${token0Decimals})), 0)
+            AS weth_price_usdc
+        FROM read_parquet('${swapsPath}')
+        GROUP BY day
+      ),
+      mints AS (
         SELECT day,
           SUM(ABS(CAST(amount0 AS DOUBLE)) / POW(10, ${token0Decimals})) AS weth_added,
           SUM(ABS(CAST(amount1 AS DOUBLE)) / POW(10, ${token1Decimals})) AS usdc_added,
@@ -68,11 +79,16 @@ async function main() {
         COALESCE(m.usdc_added, 0) AS usdc_added,
         COALESCE(b.usdc_removed, 0) AS usdc_removed,
         COALESCE(m.usdc_added, 0) - COALESCE(b.usdc_removed, 0) AS net_usdc,
+        COALESCE(p.weth_price_usdc, 0) AS weth_price_usdc,
+        (COALESCE(m.usdc_added, 0) - COALESCE(b.usdc_removed, 0))
+          + (COALESCE(m.weth_added, 0) - COALESCE(b.weth_removed, 0)) * COALESCE(p.weth_price_usdc, 0)
+          AS net_usd,
         COALESCE(m.mint_count, 0) AS mint_count,
         COALESCE(b.burn_count, 0) AS burn_count
       FROM all_days d
       LEFT JOIN mints m ON d.day = m.day
       LEFT JOIN burns b ON d.day = b.day
+      LEFT JOIN swap_price p ON d.day = p.day
       ORDER BY d.day
     ) TO '${resolve(outDir, "daily_net_liquidity.parquet")}' (FORMAT PARQUET)
   `);

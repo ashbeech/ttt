@@ -177,6 +177,29 @@ describe("Daily net liquidity", () => {
     }
   });
 
+  test("net_usd = net_usdc + net_weth * weth_price_usdc", async () => {
+    const rows = await queryParquet<{
+      net_weth: number;
+      net_usdc: number;
+      weth_price_usdc: number;
+      net_usd: number;
+    }>(resolve(procDir, "daily_net_liquidity.parquet"));
+
+    for (const row of rows) {
+      const expected = row.net_usdc + row.net_weth * row.weth_price_usdc;
+      expect(Math.abs(row.net_usd - expected)).toBeLessThan(0.01);
+    }
+  });
+
+  test("weth_price_usdc is positive", async () => {
+    const rows = await queryParquet<{ weth_price_usdc: number }>(
+      resolve(procDir, "daily_net_liquidity.parquet")
+    );
+    for (const row of rows) {
+      expect(row.weth_price_usdc).toBeGreaterThan(0);
+    }
+  });
+
   test("mint_count and burn_count are non-negative", async () => {
     const rows = await queryParquet<{ mint_count: number; burn_count: number }>(
       resolve(procDir, "daily_net_liquidity.parquet")

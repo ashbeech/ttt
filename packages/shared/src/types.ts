@@ -93,6 +93,8 @@ export interface DailyNetLiquidity {
   usdc_added: number;
   usdc_removed: number;
   net_usdc: number;
+  weth_price_usdc: number;
+  net_usd: number;
   mint_count: number;
   burn_count: number;
 }

@@ -13,13 +13,13 @@ export const LINEAGE: Record<string, LineageDef> = {
     sourceIntermediateFiles: ["data/intermediate/swaps.parquet"],
   },
   daily_net_liquidity: {
-    metricName: "Daily Net Liquidity Change",
+    metricName: "Daily Net Liquidity Change (USD)",
     description:
-      "Net token amounts added minus removed by LPs each day, using amount0 (WETH) and amount1 (USDC) from Mint and Burn events. Denominated in actual tokens, not raw liquidity units — positive net_weth means more WETH deposited than withdrawn.",
-    formula: "net_weth = SUM(Mint.amount0 / 10^18) - SUM(Burn.amount0 / 10^18), net_usdc = SUM(Mint.amount1 / 10^6) - SUM(Burn.amount1 / 10^6) grouped by day",
-    sourceEvents: ["Mint", "Burn"],
-    sourceRawFiles: ["data/raw/logs.mint.json", "data/raw/logs.burn.json"],
-    sourceIntermediateFiles: ["data/intermediate/mints.parquet", "data/intermediate/burns.parquet"],
+      "USD-equivalent net capital flow from LPs. WETH price is derived from the pool's own swap data as a volume-weighted average: SUM(|USDC volume|) / SUM(|WETH volume|). Net WETH is converted at that price and added to net USDC. This avoids an external oracle dependency while giving a single, intuitive dollar figure.",
+    formula: "net_usd = net_usdc + (net_weth × weth_price_usdc), where weth_price_usdc = SUM(|amount1|/10^6) / SUM(|amount0|/10^18) from swaps, grouped by day",
+    sourceEvents: ["Swap", "Mint", "Burn"],
+    sourceRawFiles: ["data/raw/logs.swap.json", "data/raw/logs.mint.json", "data/raw/logs.burn.json"],
+    sourceIntermediateFiles: ["data/intermediate/swaps.parquet", "data/intermediate/mints.parquet", "data/intermediate/burns.parquet"],
   },
   daily_active_wallets: {
     metricName: "Daily Active Wallets by Role",

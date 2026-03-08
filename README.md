@@ -1,4 +1,4 @@
-# Tiny-Token-Terminal
+# Tiny Token Terminal
 
 A small full-stack on-chain analytics demo. It follows the same engineering shape as Token Terminal: raw data → structured events → daily metrics → cached API → dashboard → audit trail.
 
@@ -49,7 +49,7 @@ Use **Uniswap V3** pool events on **Base** chain.
 ### Backend (API / Processing)
 
 - Node.js + TypeScript
-- Fastify
+- Fastify (I'm used to Express, but hear this might be worth a try for performance in this context)
 - Zod for inbound validation
 
 ### Data
@@ -217,6 +217,53 @@ bun test
 
 Tests verify Parquet schemas, metric formulas, row counts, and cache behavior.
 
+### 6. Connect the MCP server (optional)
+
+The MCP server uses stdio transport — it is spawned by an MCP-compatible client (Cursor, Claude Desktop, etc.), not run manually in a terminal.
+
+**Prerequisites:** the Fastify API must be running (`bun run dev:api`).
+
+Add the following to your MCP client config:
+
+**Cursor** (`.cursor/mcp.json` in the project root):
+
+```json
+{
+  "mcpServers": {
+    "mini-terminal": {
+      "command": "bun",
+      "args": ["run", "apps/mcp/src/server.ts"],
+      "env": {
+        "MCP_API_BASE_URL": "http://127.0.0.1:3001"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "mini-terminal": {
+      "command": "bun",
+      "args": ["run", "apps/mcp/src/server.ts"],
+      "cwd": "/absolute/path/to/ttt",
+      "env": {
+        "MCP_API_BASE_URL": "http://127.0.0.1:3001"
+      }
+    }
+  }
+}
+```
+
+Optional environment variables:
+
+- `MCP_API_BASE_URL` (default: `http://127.0.0.1:3001`)
+- `MCP_TIMEOUT_MS` (default: `6000`)
+- `MCP_MAX_DATE_SPAN_DAYS` (default: disabled; set to a positive integer to enforce)
+
 ### Live data
 
 To fetch real data from Base instead of using the seed:
@@ -246,6 +293,10 @@ The pipeline detects the key and fetches live logs from the RPC. You can also ad
 │   │       ├── server.ts    Entry point
 │   │       ├── routes/      Overview, metrics, wallets, lineage
 │   │       └── lib/         DuckDB helper, lineage definitions
+│   ├── mcp/                 MCP adapter server (stdio tools)
+│   │   └── src/
+│   │       ├── server.ts    MCP server entry point
+│   │       └── lib/         Tool registration + API/manifest adapters
 │   └── web/                 React dashboard
 │       └── src/
 │           ├── pages/       Overview, Metrics, Lineage, Wallets
@@ -271,6 +322,21 @@ The pipeline detects the key and fetches live logs from the RPC. You can also ad
 
 ## Extending
 
+### MCP tools (v1)
+
+The MCP server is a thin adapter over the API. It does not duplicate SQL or pipeline logic. Current tools:
+
+- `get_health`
+- `get_overview`
+- `get_fees`
+- `get_liquidity`
+- `get_active_wallets`
+- `get_supporting_metrics`
+- `get_top_wallets`
+- `list_lineage_metrics`
+- `get_metric_lineage`
+- `get_pipeline_manifest`
+
 The pipeline is designed to scale horizontally. To add a new pool:
 
 1. Add the pool address and metadata to `packages/shared/src/config.ts`
@@ -292,7 +358,12 @@ This is a demo scoped to one pool and one block range. Some things I kept simple
 
 - **Fee estimate uses absolute amount0 only.** In production you'd apply price feeds and account for token direction.
 - **Volume proxy is not precise economic volume.** It's a transparent, consistent proxy using absolute token0 amounts.
+- **Net liquidity uses a pool-derived WETH price, not an oracle.** The WETH/USDC price is a volume-weighted average from the pool's own swap data. This keeps the system self-contained and auditable. In production you'd use a TWAP oracle (e.g. Uniswap V3's `observe()`) or Chainlink price feed mapped to transaction timestamps for more precise per-event pricing.
 - **One pool, one chain.** The architecture supports multiple pools and chains, but the demo targets one to keep it explainable.
 - **In-memory cache.** Works for a demo; in production you'd use Redis or similar.
 - **No incremental updates.** The pipeline rebuilds from scratch each run. Adding incremental processing is straightforward but adds complexity that doesn't help the demo.
 - **Block range is fixed.** Configurable via env vars, but the seed data covers a specific ~~50k-block~~ 5k-block window (`43,041,220` to `43,046,220`). Moralis free-tier rate limits were aggressive enough that narrowing the default range made pipeline runs reliable for a local demo.
+
+## UX decisions
+
+- **Net liquidity as a single USD figure.** The raw Uniswap V3 `amount` field (internal liquidity units) is meaningless to a user. I first tried showing separate WETH and USDC deltas, but two unrelated numbers side by side is clunky — you can't quickly tell if liquidity went up or down without doing mental math. Converting to a single dollar value gives immediate signal. The WETH price is derived from the pool's own swaps rather than an external oracle, which I'd flag in a production context but is a reasonable trade-off for a self-contained demo. The per-token breakdown is preserved in the data and visible via the Metrics detail view for anyone who wants it.
